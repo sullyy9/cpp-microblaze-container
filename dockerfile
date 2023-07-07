@@ -30,6 +30,45 @@ RUN pacman --noconfirm -Syu && \
     usbutils && \
     pacman --noconfirm -Scc
 
+ENV PREFIX="/usr/local"
+ENV TARGET=microblaze-xilinx-elf
+ENV PATH="$PREFIX/bin:$PATH"
+
+RUN cd ~ && \
+    git clone --depth=1 https://github.com/bminor/binutils-gdb.git && \
+    mkdir ~/build && \
+    cd build && \
+    ../binutils-gdb/configure --target=$TARGET --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror && \
+    make -j4 && \
+    make install && \
+    cd ~ && \
+    sudo rm -r ~/*
+
+RUN cd ~ && \
+    git clone --branch releases/gcc-13.1.0 --single-branch --depth=1 https://github.com/gcc-mirror/gcc.git && \
+    cd ~/gcc && \
+    ./contrib/download_prerequisites && \
+    mkdir ~/build && \
+    cd ~/build && \
+    ../gcc/configure --target=$TARGET --prefix="$PREFIX" --disable-nls --enable-languages=c --without-headers --with-newlib --disable-shared --disable-threads && \
+    make -j4 all-gcc && \
+    make install-gcc && \
+    rm -r ./* && \
+# Build Newlib
+    cd ~ && \
+    git clone --depth=1 https://github.com/bminor/newlib.git && \
+    cd ~/build && \
+    ../newlib/configure --target=$TARGET --prefix="$PREFIX" && \
+    make -j4 all && \
+    make install && \
+    rm -r ./* && \
+# Fully build GCC
+    ../gcc/configure --target=$TARGET --prefix="$PREFIX" --disable-nls --enable-languages=c,c++ --with-newlib --disable-shared --disable-threads && \
+    make -j4 && \
+    make install && \
+    cd ~ && \
+    rm -r ~/*
+
 RUN wget https://muon.build/releases/edge/muon-edge-amd64-linux-static -O /usr/bin/muon && \
     chmod 775 /usr/bin/muon
 
@@ -52,36 +91,3 @@ RUN useradd --create-home -s /bin/bash -m $USER && \
 
 WORKDIR /home/$USER
 USER $USER
-
-RUN cd ~ && \
-    git clone https://github.com/bminor/binutils-gdb.git && \
-    git clone --branch releases/gcc-13.1.0 --single-branch https://github.com/gcc-mirror/gcc.git && \
-    cd ~/gcc && \
-    ./contrib/download_prerequisites && \
-    cd ~ && \
-    mkdir ~/build-binutils && \
-    mkdir ~/build-gcc && \
-    export PREFIX="/usr/local" && \
-    export TARGET=microblaze-xilinx-elf && \
-    export PATH="$PREFIX/bin:$PATH" && \
-    cd ~/build-binutils && \
-    ../binutils-gdb/configure --target=$TARGET --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror && \
-    make -j4 && \
-    sudo make install && \
-    cd ~/build-gcc && \
-    ../gcc/configure --target=$TARGET --prefix="$PREFIX" --disable-nls --enable-languages=c,c++ --without-headers && \
-    make -j4 all-gcc && \
-    make -j4 all-target-libgcc && \
-    sudo make install-gcc && \
-    sudo make install-target-libgcc && \
-    sudo rm -r ~/*
-
-RUN cd ~ && \
-    git clone https://github.com/bminor/newlib.git && \
-    mkdir build-newlib && \
-    cd ~/build-newlib && \
-    ../newlib/configure --prefix=/usr/local --target=microblaze-xilinx-elf && \
-    make -j4 all && \
-    sudo make install && \
-    cd ~ && \
-    sudo rm -r ~/*
