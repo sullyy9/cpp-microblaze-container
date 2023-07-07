@@ -75,3 +75,13 @@ RUN cd ~ && \
     sudo make install-gcc && \
     sudo make install-target-libgcc && \
     sudo rm -r ~/*
+
+RUN cd ~ && \
+    git clone https://github.com/bminor/newlib.git && \
+    mkdir build-newlib && \
+    cd ~/build-newlib && \
+    ../newlib/configure --prefix=/usr/local --target=microblaze-xilinx-elf && \
+    make -j4 all && \
+    sudo make install && \
+    cd ~ && \
+    sudo rm -r ~/*
